@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- name="GENERATOR" content="github.com/mmarkdown/mmark Mmark Markdown Processor - mmark.miek.nl" -->
+<rfc version="3" ipr="trust200902" docName="draft-homburg-dnsop-igadp-00" submissionType="IETF" category="std" xml:lang="en" xmlns:xi="http://www.w3.org/2001/XInclude" indexInclude="true" consensus="true">
+
+<front>
+<title abbrev="igadp">Implementation Guidelines for Authoritative DNS Proxies</title><seriesInfo value="draft-homburg-dnsop-igadp-00" stream="IETF" status="standard" name="Internet-Draft"></seriesInfo>
+<author initials="P.C." surname="Homburg" fullname="Philip Homburg"><organization></organization><address><postal><street></street>
+</postal><email>philip@nlnetlabs.nl</email>
+</address></author><date/>
+<area>Internet</area>
+<workgroup>DNSOP</workgroup>
+
+<abstract>
+<t>In some situations it can attractive to have an authoritative DNS server that
+does not have a local copy of the zone or zones that it serves.
+In particular in anycast operations, it is attractive to have a great
+geographical and topological diversity. However, sometimes the expect use of
+a particular site does not warrant the cost of keep local copies of the
+zones up-to-date.
+This can be the case if the zone is very big or if the anycast cluster serves
+many zones and only a few on them are expect to get significant use.
+In these cases it is attractive to have a proxy serve some or all of the zones.
+The proxy does not have a local copy of the zones it serves, instead it
+forwards request to another server tat is authoritaive for the zone.
+The proxy may have a cache.
+This document describes the details of such proxies.</t>
+</abstract>
+
+</front>
+
+<middle>
+
+<section anchor="discussion-venues"><name>Discussion Venues</name>
+<t>This note is to be removed before publishing as an RFC.
+Source for this draft and an issue tracker can be found at
+<eref target="https://github.com/NLnetLabs/draft-homburg-dnsop-igadp.git">https://github.com/NLnetLabs/draft-homburg-dnsop-igadp.git</eref> .</t>
+</section>
+
+<section anchor="introduction"><name>Introduction</name>
+<t>In some situations it can attractive to have an authoritative DNS server that
+does not have a local copy of the zone or zones that it serves.
+In particular in anycast operations, it is attractive to have a great
+geographical and topological diversity.
+Benefits of an extra site can be reduced latency, DDoS protection by
+serving a zone locally and thus be protected from a DDoS that originates in
+other parts of the network, and DDoS mitigation by attracting local DDoS
+traffic.</t>
+<t>However, sometimes the expect use of a particular site does not warrant the
+cost of keep local copies of the zones up-to-date.
+This can be the case if the zone is very big or if the anycast cluster serves
+many zones and only a few on them are expect to get significant use.</t>
+<t>In these cases it is attractive to have a proxy serve some or all of the zones.
+The proxy does not have a local copy of the zones it serves, instead it
+forwards request to another server tat is authoritaive for the zone.
+The proxy may have a cache.</t>
+<t>A proxy can operate in two basic modes: with or without cache. Without a cache,
+the proxy forward each incoming request to another that is authoritative
+for te domain. This is very simple, but also provides limited benefits.</t>
+<t>With a cache the proxy becomes more complex. The reason is that we
+want the proxy to behave like an authoritative server, i.e. provide similar
+behavior with respect to TTLs and data consistency.</t>
+<t>Another issue that may complicate matters is the EDNS Client Subnet option.</t>
+</section>
+
+<section anchor="basic-requirements"><name>Basic Requirements</name>
+<t>The proxy MUST drop replies with the AA bit clear. The reasoning is that
+the proxy may accidentally reach a recursive resolver.</t>
+<t>The proxy sends requests upstream with RD bit clear.</t>
+<t>The proxy sends replies to clients with the original TTL. Caching is not
+controlled by TTL but by the parameters in the SOA record.</t>
+</section>
+
+<section anchor="cache-replacement"><name>Cache replacement</name>
+<t>The goal of the cache replacement strategy described here is mimic the
+behavior of a standard secondary as much as possible.</t>
+<t>The basic idea is that the proxy fetches SOA records just like a secondary
+would do based on the parameters in the SOA record, in response to a NOTIFY
+and taking the contents of the EXPIRE option RFC 7314.</t>
+<t>Cache entries are tags with the zone serial number from the most recent SOA
+record. A cache entry is valid only when the serial number in the cache
+entry match the serial number of the current SOA record.</t>
+<t>When a new SOA record arrives with a higher serial number there are two
+options.
+The first option is to take this as the new current SOA record. This has the
+effect of immediately invalidating the cache.</t>
+<t>The second option is to delay accepting this SOA and load new copies of
+hot cache items first.</t>
+<t>Note that DNS replies may contain SOA records. If a DNS replies contains a
+SOA record with a higher serial number then the proxy updates its copy of
+the SOA records using one of the two techniques descibed above.</t>
+</section>
+
+<section anchor="aggressive-negative-caching"><name>Aggressive negative caching</name>
+<t>A caching proxy is allowed to generate negative responses (NODATA or NXDOMAIN)
+based on information in NSEC or NSEC3 records. Obviously this can be done
+only for DNSSEC signed zones, and NXDOMAIN only for NSEC or NSEC3 without
+opt-out.</t>
+</section>
+
+<section anchor="ends-client-subnet-option"><name>ENDS Client Subnet Option</name>
+<t>A proxy MAY support RFC 7871 (Client Subnet in DNS Queries). Support is optional because many authoritative server have no need to know the IP address of the client.</t>
+<t>If the proxy supports ECS, it SHOULD be disabled by default. The reason is that
+ECS sends privacy sensitive data over the internet.</t>
+<t>A proxy that does not support ECS or where ECS support is disabled MUST not
+send queries upstream that contain the ECS option. In addition, the proxy
+MUST NOT send replies that contain an ECS option.</t>
+</section>
+
+</middle>
+
+<back>
+
+</back>
+
+</rfc>

@@ -1,0 +1,224 @@
+
+
+
+
+DNSOP                                                       P.C. Homburg
+Internet-Draft                                              11 July 2023
+Intended status: Standards Track                                        
+Expires: 12 January 2024
+
+
+        Implementation Guidelines for Authoritative DNS Proxies
+                      draft-homburg-dnsop-igadp-00
+
+Abstract
+
+   In some situations it can attractive to have an authoritative DNS
+   server that does not have a local copy of the zone or zones that it
+   serves.  In particular in anycast operations, it is attractive to
+   have a great geographical and topological diversity.  However,
+   sometimes the expect use of a particular site does not warrant the
+   cost of keep local copies of the zones up-to-date.  This can be the
+   case if the zone is very big or if the anycast cluster serves many
+   zones and only a few on them are expect to get significant use.  In
+   these cases it is attractive to have a proxy serve some or all of the
+   zones.  The proxy does not have a local copy of the zones it serves,
+   instead it forwards request to another server tat is authoritaive for
+   the zone.  The proxy may have a cache.  This document describes the
+   details of such proxies.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on 12 January 2024.
+
+Copyright Notice
+
+   Copyright (c) 2023 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+
+
+
+
+Homburg                  Expires 12 January 2024                [Page 1]
+
+Internet-Draft                    igadp                        July 2023
+
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents (https://trustee.ietf.org/
+   license-info) in effect on the date of publication of this document.
+   Please review these documents carefully, as they describe your rights
+   and restrictions with respect to this document.  Code Components
+   extracted from this document must include Revised BSD License text as
+   described in Section 4.e of the Trust Legal Provisions and are
+   provided without warranty as described in the Revised BSD License.
+
+Table of Contents
+
+   1.  Discussion Venues . . . . . . . . . . . . . . . . . . . . . .   2
+   2.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
+   3.  Basic Requirements  . . . . . . . . . . . . . . . . . . . . .   3
+   4.  Cache replacement . . . . . . . . . . . . . . . . . . . . . .   3
+   5.  Aggressive negative caching . . . . . . . . . . . . . . . . .   4
+   6.  ENDS Client Subnet Option . . . . . . . . . . . . . . . . . .   4
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   4
+
+1.  Discussion Venues
+
+   This note is to be removed before publishing as an RFC.  Source for
+   this draft and an issue tracker can be found at
+   https://github.com/NLnetLabs/draft-homburg-dnsop-igadp.git
+   (https://github.com/NLnetLabs/draft-homburg-dnsop-igadp.git) .
+
+2.  Introduction
+
+   In some situations it can attractive to have an authoritative DNS
+   server that does not have a local copy of the zone or zones that it
+   serves.  In particular in anycast operations, it is attractive to
+   have a great geographical and topological diversity.  Benefits of an
+   extra site can be reduced latency, DDoS protection by serving a zone
+   locally and thus be protected from a DDoS that originates in other
+   parts of the network, and DDoS mitigation by attracting local DDoS
+   traffic.
+
+   However, sometimes the expect use of a particular site does not
+   warrant the cost of keep local copies of the zones up-to-date.  This
+   can be the case if the zone is very big or if the anycast cluster
+   serves many zones and only a few on them are expect to get
+   significant use.
+
+   In these cases it is attractive to have a proxy serve some or all of
+   the zones.  The proxy does not have a local copy of the zones it
+   serves, instead it forwards request to another server tat is
+   authoritaive for the zone.  The proxy may have a cache.
+
+
+
+
+Homburg                  Expires 12 January 2024                [Page 2]
+
+Internet-Draft                    igadp                        July 2023
+
+
+   A proxy can operate in two basic modes: with or without cache.
+   Without a cache, the proxy forward each incoming request to another
+   that is authoritative for te domain.  This is very simple, but also
+   provides limited benefits.
+
+   With a cache the proxy becomes more complex.  The reason is that we
+   want the proxy to behave like an authoritative server, i.e. provide
+   similar behavior with respect to TTLs and data consistency.
+
+   Another issue that may complicate matters is the EDNS Client Subnet
+   option.
+
+3.  Basic Requirements
+
+   The proxy MUST drop replies with the AA bit clear.  The reasoning is
+   that the proxy may accidentally reach a recursive resolver.
+
+   The proxy sends requests upstream with RD bit clear.
+
+   The proxy sends replies to clients with the original TTL.  Caching is
+   not controlled by TTL but by the parameters in the SOA record.
+
+4.  Cache replacement
+
+   The goal of the cache replacement strategy described here is mimic
+   the behavior of a standard secondary as much as possible.
+
+   The basic idea is that the proxy fetches SOA records just like a
+   secondary would do based on the parameters in the SOA record, in
+   response to a NOTIFY and taking the contents of the EXPIRE option RFC
+   7314.
+
+   Cache entries are tags with the zone serial number from the most
+   recent SOA record.  A cache entry is valid only when the serial
+   number in the cache entry match the serial number of the current SOA
+   record.
+
+   When a new SOA record arrives with a higher serial number there are
+   two options.  The first option is to take this as the new current SOA
+   record.  This has the effect of immediately invalidating the cache.
+
+   The second option is to delay accepting this SOA and load new copies
+   of hot cache items first.
+
+   Note that DNS replies may contain SOA records.  If a DNS replies
+   contains a SOA record with a higher serial number then the proxy
+   updates its copy of the SOA records using one of the two techniques
+   descibed above.
+
+
+
+Homburg                  Expires 12 January 2024                [Page 3]
+
+Internet-Draft                    igadp                        July 2023
+
+
+5.  Aggressive negative caching
+
+   A caching proxy is allowed to generate negative responses (NODATA or
+   NXDOMAIN) based on information in NSEC or NSEC3 records.  Obviously
+   this can be done only for DNSSEC signed zones, and NXDOMAIN only for
+   NSEC or NSEC3 without opt-out.
+
+6.  ENDS Client Subnet Option
+
+   A proxy MAY support RFC 7871 (Client Subnet in DNS Queries).  Support
+   is optional because many authoritative server have no need to know
+   the IP address of the client.
+
+   If the proxy supports ECS, it SHOULD be disabled by default.  The
+   reason is that ECS sends privacy sensitive data over the internet.
+
+   A proxy that does not support ECS or where ECS support is disabled
+   MUST not send queries upstream that contain the ECS option.  In
+   addition, the proxy MUST NOT send replies that contain an ECS option.
+
+Author's Address
+
+   Philip Homburg
+   Email: philip@nlnetlabs.nl
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Homburg                  Expires 12 January 2024                [Page 4]
