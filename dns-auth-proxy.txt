@@ -3,9 +3,9 @@
 
 
 DNSOP                                                       P.C. Homburg
-Internet-Draft                                              11 July 2023
+Internet-Draft                                           13 October 2023
 Intended status: Standards Track                                        
-Expires: 12 January 2024
+Expires: 15 April 2024
 
 
         Implementation Guidelines for Authoritative DNS Proxies
@@ -13,19 +13,19 @@ Expires: 12 January 2024
 
 Abstract
 
-   In some situations it can attractive to have an authoritative DNS
+   In some situations it be can attractive to have an authoritative DNS
    server that does not have a local copy of the zone or zones that it
-   serves.  In particular in anycast operations, it is attractive to
-   have a great geographical and topological diversity.  However,
-   sometimes the expect use of a particular site does not warrant the
-   cost of keep local copies of the zones up-to-date.  This can be the
-   case if the zone is very big or if the anycast cluster serves many
-   zones and only a few on them are expect to get significant use.  In
-   these cases it is attractive to have a proxy serve some or all of the
-   zones.  The proxy does not have a local copy of the zones it serves,
-   instead it forwards request to another server tat is authoritaive for
-   the zone.  The proxy may have a cache.  This document describes the
-   details of such proxies.
+   serves.  In particular in anycast operations, it is sensible to have
+   a great geographical and topological diversity.  However, sometimes
+   the expected use of a particular site does not warrant the cost of
+   keeping local copies of the zones.  This can be the case if a zone is
+   very large or if the anycast cluster serves many zones from which
+   only a few are expected to receive significant traffic.  In these
+   cases it can be useful to have a proxy serve some or all of the
+   zones.  The proxy would not have a local copy of the zones it serves,
+   instead it forwards request to another server that is authoritative
+   for the zone.  The proxy may have a cache.  This document describes
+   the details of such proxies.
 
 Status of This Memo
 
@@ -42,7 +42,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 12 January 2024.
+   This Internet-Draft will expire on 15 April 2024.
 
 Copyright Notice
 
@@ -53,9 +53,9 @@ Copyright Notice
 
 
 
-Homburg                  Expires 12 January 2024                [Page 1]
+Homburg                   Expires 15 April 2024                 [Page 1]
 
-Internet-Draft                    igadp                        July 2023
+Internet-Draft                    igadp                     October 2023
 
 
    This document is subject to BCP 78 and the IETF Trust's Legal
@@ -75,7 +75,10 @@ Table of Contents
    4.  Cache replacement . . . . . . . . . . . . . . . . . . . . . .   3
    5.  Aggressive negative caching . . . . . . . . . . . . . . . . .   4
    6.  ENDS Client Subnet Option . . . . . . . . . . . . . . . . . .   4
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   4
+   7.  Acknowledgements  . . . . . . . . . . . . . . . . . . . . . .   4
+   8.  Normative References  . . . . . . . . . . . . . . . . . . . .   4
+   9.  Informative References  . . . . . . . . . . . . . . . . . . .   4
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   5
 
 1.  Discussion Venues
 
@@ -86,50 +89,49 @@ Table of Contents
 
 2.  Introduction
 
-   In some situations it can attractive to have an authoritative DNS
+   In some situations it can be attractive to have an authoritative DNS
    server that does not have a local copy of the zone or zones that it
-   serves.  In particular in anycast operations, it is attractive to
-   have a great geographical and topological diversity.  Benefits of an
-   extra site can be reduced latency, DDoS protection by serving a zone
+   serves.  In particular in anycast operations, it is sensible to have
+   a great geographical and topological diversity.  Benefits of an extra
+   site can be: reduced latency, DDoS protection by serving a zone
    locally and thus be protected from a DDoS that originates in other
    parts of the network, and DDoS mitigation by attracting local DDoS
    traffic.
 
-   However, sometimes the expect use of a particular site does not
-   warrant the cost of keep local copies of the zones up-to-date.  This
-   can be the case if the zone is very big or if the anycast cluster
-   serves many zones and only a few on them are expect to get
-   significant use.
-
-   In these cases it is attractive to have a proxy serve some or all of
-   the zones.  The proxy does not have a local copy of the zones it
-   serves, instead it forwards request to another server tat is
-   authoritaive for the zone.  The proxy may have a cache.
+   However, sometimes the expected use of a particular site does not
+   warrant the cost of keeping local copies of the zones up-to-date.
+   This can be the case if a zone is very large or if the anycast
+   cluster serves many zones and only a few of them are expected to
+   receive significant traffic.
 
 
 
 
-Homburg                  Expires 12 January 2024                [Page 2]
+
+
+Homburg                   Expires 15 April 2024                 [Page 2]
 
-Internet-Draft                    igadp                        July 2023
+Internet-Draft                    igadp                     October 2023
 
 
-   A proxy can operate in two basic modes: with or without cache.
-   Without a cache, the proxy forward each incoming request to another
-   that is authoritative for te domain.  This is very simple, but also
+   In these cases it can be useful to have a proxy serve some or all of
+   the zones.  Instead of having a local copy of the zones, such a proxy
+   forwards requests to another server that is authoritative for the
+   zone.  The proxy may have a cache.
+
+   A proxy can operate with or without cache.  Without a cache, the
+   proxy forwards each incoming request to a name server that is
+   authoritative for the domain.  This is straight forward, but also
    provides limited benefits.
 
-   With a cache the proxy becomes more complex.  The reason is that we
-   want the proxy to behave like an authoritative server, i.e. provide
-   similar behavior with respect to TTLs and data consistency.
+   Because we need the proxy to behave like an authoritative server and
+   provide similar behavior with respect to TTLs and data consistency,
+   proxy behavior _with a cache_ is more involved.
 
-   Another issue that may complicate matters is the EDNS Client Subnet
-   option.
+   Another issue that may complicate caching of responses is the EDNS
+   Client Subnet option.
 
 3.  Basic Requirements
-
-   The proxy MUST drop replies with the AA bit clear.  The reasoning is
-   that the proxy may accidentally reach a recursive resolver.
 
    The proxy sends requests upstream with RD bit clear.
 
@@ -138,50 +140,52 @@ Internet-Draft                    igadp                        July 2023
 
 4.  Cache replacement
 
-   The goal of the cache replacement strategy described here is mimic
+   The goal of the cache replacement strategy described here is to mimic
    the behavior of a standard secondary as much as possible.
 
-   The basic idea is that the proxy fetches SOA records just like a
-   secondary would do based on the parameters in the SOA record, in
-   response to a NOTIFY and taking the contents of the EXPIRE option RFC
-   7314.
+   The proxy fetches SOA records just like a secondary would do based on
+   the parameters in the SOA record in response to a NOTIFY, and takes
+   the contents of the EXPIRE option [RFC7314].
 
-   Cache entries are tags with the zone serial number from the most
+   Cache entries are tagged with the zone serial number from the most
    recent SOA record.  A cache entry is valid only when the serial
-   number in the cache entry match the serial number of the current SOA
-   record.
+   number in the cache entry matches the serial number of the current
+   SOA record.
 
-   When a new SOA record arrives with a higher serial number there are
+   When a new SOA record arrives with a higher serial number, there are
    two options.  The first option is to take this as the new current SOA
    record.  This has the effect of immediately invalidating the cache.
 
    The second option is to delay accepting this SOA and load new copies
    of hot cache items first.
 
-   Note that DNS replies may contain SOA records.  If a DNS replies
-   contains a SOA record with a higher serial number then the proxy
-   updates its copy of the SOA records using one of the two techniques
-   descibed above.
 
 
 
-Homburg                  Expires 12 January 2024                [Page 3]
+
+
+
+Homburg                   Expires 15 April 2024                 [Page 3]
 
-Internet-Draft                    igadp                        July 2023
+Internet-Draft                    igadp                     October 2023
 
+
+   Note that DNS replies may contain SOA records.  If a DNS replies
+   contains a SOA record with a higher than the most recently seen
+   serial number (taking into account Serial Number Arithmetic
+   [RFC1982]), then the proxy updates its copy of the SOA records using
+   one of the two techniques described above.
 
 5.  Aggressive negative caching
 
    A caching proxy is allowed to generate negative responses (NODATA or
-   NXDOMAIN) based on information in NSEC or NSEC3 records.  Obviously
-   this can be done only for DNSSEC signed zones, and NXDOMAIN only for
-   NSEC or NSEC3 without opt-out.
+   NXDOMAIN) [RFC8198][RFC9077] based on information in NSEC or NSEC3
+   records.  Obviously this can be done only for DNSSEC signed zones,
+   and NXDOMAIN only for NSEC or NSEC3 without opt-out.
 
 6.  ENDS Client Subnet Option
 
-   A proxy MAY support RFC 7871 (Client Subnet in DNS Queries).  Support
-   is optional because many authoritative server have no need to know
-   the IP address of the client.
+   A proxy MAY support [RFC7871] (Client Subnet in DNS Queries).
 
    If the proxy supports ECS, it SHOULD be disabled by default.  The
    reason is that ECS sends privacy sensitive data over the internet.
@@ -189,6 +193,42 @@ Internet-Draft                    igadp                        July 2023
    A proxy that does not support ECS or where ECS support is disabled
    MUST not send queries upstream that contain the ECS option.  In
    addition, the proxy MUST NOT send replies that contain an ECS option.
+
+7.  Acknowledgements
+
+   Many thanks to Willem Toorop for his feedback.
+
+8.  Normative References
+
+   [RFC1982]  Elz, R. and R. Bush, "Serial Number Arithmetic", RFC 1982,
+              DOI 10.17487/RFC1982, August 1996,
+              <https://www.rfc-editor.org/info/rfc1982>.
+
+   [RFC7314]  Andrews, M., "Extension Mechanisms for DNS (EDNS) EXPIRE
+              Option", RFC 7314, DOI 10.17487/RFC7314, July 2014,
+              <https://www.rfc-editor.org/info/rfc7314>.
+
+   [RFC7871]  Contavalli, C., van der Gaast, W., Lawrence, D., and W.
+              Kumari, "Client Subnet in DNS Queries", RFC 7871,
+              DOI 10.17487/RFC7871, May 2016,
+              <https://www.rfc-editor.org/info/rfc7871>.
+
+   [RFC8198]  Fujiwara, K., Kato, A., and W. Kumari, "Aggressive Use of
+              DNSSEC-Validated Cache", RFC 8198, DOI 10.17487/RFC8198,
+              July 2017, <https://www.rfc-editor.org/info/rfc8198>.
+
+9.  Informative References
+
+
+
+Homburg                   Expires 15 April 2024                 [Page 4]
+
+Internet-Draft                    igadp                     October 2023
+
+
+   [RFC9077]  van Dijk, P., "NSEC and NSEC3: TTLs and Aggressive Use",
+              RFC 9077, DOI 10.17487/RFC9077, July 2021,
+              <https://www.rfc-editor.org/info/rfc9077>.
 
 Author's Address
 
@@ -221,4 +261,20 @@ Author's Address
 
 
 
-Homburg                  Expires 12 January 2024                [Page 4]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Homburg                   Expires 15 April 2024                 [Page 5]
