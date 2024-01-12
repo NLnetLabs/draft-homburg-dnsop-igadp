@@ -3,13 +3,14 @@
 
 
 DNSOP                                                       P.C. Homburg
-Internet-Draft                                           13 October 2023
-Intended status: Standards Track                                        
-Expires: 15 April 2024
+Internet-Draft                                                          
+Intended status: Standards Track                           S.W.J. Ubbink
+Expires: 15 July 2024                                               SIDN
+                                                         12 January 2024
 
 
         Implementation Guidelines for Authoritative DNS Proxies
-                      draft-homburg-dnsop-igadp-00
+                      draft-homburg-dnsop-igadp-01
 
 Abstract
 
@@ -42,20 +43,19 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 15 April 2024.
+   This Internet-Draft will expire on 15 July 2024.
 
 Copyright Notice
 
-   Copyright (c) 2023 IETF Trust and the persons identified as the
+   Copyright (c) 2024 IETF Trust and the persons identified as the
    document authors.  All rights reserved.
 
 
 
 
-
-Homburg                   Expires 15 April 2024                 [Page 1]
+Homburg & Ubbink          Expires 15 July 2024                  [Page 1]
 
-Internet-Draft                    igadp                     October 2023
+Internet-Draft                    igadp                     January 2024
 
 
    This document is subject to BCP 78 and the IETF Trust's Legal
@@ -71,14 +71,19 @@ Table of Contents
 
    1.  Discussion Venues . . . . . . . . . . . . . . . . . . . . . .   2
    2.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
-   3.  Basic Requirements  . . . . . . . . . . . . . . . . . . . . .   3
-   4.  Cache replacement . . . . . . . . . . . . . . . . . . . . . .   3
-   5.  Aggressive negative caching . . . . . . . . . . . . . . . . .   4
-   6.  ENDS Client Subnet Option . . . . . . . . . . . . . . . . . .   4
-   7.  Acknowledgements  . . . . . . . . . . . . . . . . . . . . . .   4
-   8.  Normative References  . . . . . . . . . . . . . . . . . . . .   4
-   9.  Informative References  . . . . . . . . . . . . . . . . . . .   4
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   5
+   3.  Terminology and Definitions . . . . . . . . . . . . . . . . .   3
+   4.  Basic Requirements  . . . . . . . . . . . . . . . . . . . . .   3
+   5.  Cache replacement . . . . . . . . . . . . . . . . . . . . . .   3
+   6.  Aggressive negative caching . . . . . . . . . . . . . . . . .   4
+   7.  ENDS Client Subnet (ECS) Option . . . . . . . . . . . . . . .   4
+   8.  Operational Considerations  . . . . . . . . . . . . . . . . .   4
+   9.  Security and Privacy Considerations . . . . . . . . . . . . .   5
+   10. IANA Considerations . . . . . . . . . . . . . . . . . . . . .   5
+   11. Acknowledgements  . . . . . . . . . . . . . . . . . . . . . .   5
+   12. References  . . . . . . . . . . . . . . . . . . . . . . . . .   5
+     12.1.  Normative References . . . . . . . . . . . . . . . . . .   5
+     12.2.  Informative References . . . . . . . . . . . . . . . . .   6
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .   6
 
 1.  Discussion Venues
 
@@ -98,21 +103,22 @@ Table of Contents
    parts of the network, and DDoS mitigation by attracting local DDoS
    traffic.
 
+
+
+
+
+
+
+Homburg & Ubbink          Expires 15 July 2024                  [Page 2]
+
+Internet-Draft                    igadp                     January 2024
+
+
    However, sometimes the expected use of a particular site does not
    warrant the cost of keeping local copies of the zones up-to-date.
    This can be the case if a zone is very large or if the anycast
    cluster serves many zones and only a few of them are expected to
    receive significant traffic.
-
-
-
-
-
-
-Homburg                   Expires 15 April 2024                 [Page 2]
-
-Internet-Draft                    igadp                     October 2023
-
 
    In these cases it can be useful to have a proxy serve some or all of
    the zones.  Instead of having a local copy of the zones, such a proxy
@@ -131,14 +137,22 @@ Internet-Draft                    igadp                     October 2023
    Another issue that may complicate caching of responses is the EDNS
    Client Subnet option.
 
-3.  Basic Requirements
+3.  Terminology and Definitions
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+   "OPTIONAL" in this document are to be interpreted as described in BCP
+   14 [RFC2119][RFC8174] when, and only when, they appear in all
+   capitals, as shown here.
+
+4.  Basic Requirements
 
    The proxy sends requests upstream with RD bit clear.
 
    The proxy sends replies to clients with the original TTL.  Caching is
    not controlled by TTL but by the parameters in the SOA record.
 
-4.  Cache replacement
+5.  Cache replacement
 
    The goal of the cache replacement strategy described here is to mimic
    the behavior of a standard secondary as much as possible.
@@ -146,6 +160,15 @@ Internet-Draft                    igadp                     October 2023
    The proxy fetches SOA records just like a secondary would do based on
    the parameters in the SOA record in response to a NOTIFY, and takes
    the contents of the EXPIRE option [RFC7314].
+
+
+
+
+
+Homburg & Ubbink          Expires 15 July 2024                  [Page 3]
+
+Internet-Draft                    igadp                     January 2024
+
 
    Cache entries are tagged with the zone serial number from the most
    recent SOA record.  A cache entry is valid only when the serial
@@ -159,31 +182,23 @@ Internet-Draft                    igadp                     October 2023
    The second option is to delay accepting this SOA and load new copies
    of hot cache items first.
 
-
-
-
-
-
-
-Homburg                   Expires 15 April 2024                 [Page 3]
-
-Internet-Draft                    igadp                     October 2023
-
-
    Note that DNS replies may contain SOA records.  If a DNS replies
    contains a SOA record with a higher than the most recently seen
    serial number (taking into account Serial Number Arithmetic
    [RFC1982]), then the proxy updates its copy of the SOA records using
    one of the two techniques described above.
 
-5.  Aggressive negative caching
+   Question: how effective will this setup be when fast updates are
+   being used?
+
+6.  Aggressive negative caching
 
    A caching proxy is allowed to generate negative responses (NODATA or
    NXDOMAIN) [RFC8198][RFC9077] based on information in NSEC or NSEC3
    records.  Obviously this can be done only for DNSSEC signed zones,
    and NXDOMAIN only for NSEC or NSEC3 without opt-out.
 
-6.  ENDS Client Subnet Option
+7.  ENDS Client Subnet (ECS) Option
 
    A proxy MAY support [RFC7871] (Client Subnet in DNS Queries).
 
@@ -194,15 +209,62 @@ Internet-Draft                    igadp                     October 2023
    MUST not send queries upstream that contain the ECS option.  In
    addition, the proxy MUST NOT send replies that contain an ECS option.
 
-7.  Acknowledgements
+8.  Operational Considerations
+
+   When operating the proxy, there SHOULD be mechanisms in place to
+   prevent a loop in getting authoritive answers.  This can be achieved
+   by using a seperate anycast network which will be the upstream for
+   the proxy anycast network.  Or it can be done with multiple unicast
+   upstream systems.
+
+
+
+
+
+Homburg & Ubbink          Expires 15 July 2024                  [Page 4]
+
+Internet-Draft                    igadp                     January 2024
+
+
+   It is advised to prepare some blocking measures which can be
+   activated without interruption of the service.  These can be used
+   when the service is under attack.  An example of such measure is a
+   rate limit.
+
+   It is RECOMMENDED to enable serve stale data [RFC8767] on the proxies
+   to be able to provide the service when the upstream disappeared.
+
+9.  Security and Privacy Considerations
+
+   When a random-subdomain attack is done on the proxy, this will cause
+   a lot of traffic to the other server that has the full zone(s) and
+   will fill the cache with NXDOMAIN entries.  Aggressive negative
+   caching will help a lot to reduce the traffic.  If possible the proxy
+   SHOULD only reply a maximum number of NXDOMAIN answers to a single
+   resolver in a certain time to reduce the random-subdomain attack.  As
+   mentioned in Section 7 there could be privacy issues when ECS is
+   enabled.
+
+10.  IANA Considerations
+
+   This document has no IANA actions
+
+11.  Acknowledgements
 
    Many thanks to Willem Toorop for his feedback.
 
-8.  Normative References
+12.  References
+
+12.1.  Normative References
 
    [RFC1982]  Elz, R. and R. Bush, "Serial Number Arithmetic", RFC 1982,
               DOI 10.17487/RFC1982, August 1996,
               <https://www.rfc-editor.org/info/rfc1982>.
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              <https://www.rfc-editor.org/info/rfc2119>.
 
    [RFC7314]  Andrews, M., "Extension Mechanisms for DNS (EDNS) EXPIRE
               Option", RFC 7314, DOI 10.17487/RFC7314, July 2014,
@@ -213,29 +275,44 @@ Internet-Draft                    igadp                     October 2023
               DOI 10.17487/RFC7871, May 2016,
               <https://www.rfc-editor.org/info/rfc7871>.
 
+
+
+Homburg & Ubbink          Expires 15 July 2024                  [Page 5]
+
+Internet-Draft                    igadp                     January 2024
+
+
+   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+              2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
+              May 2017, <https://www.rfc-editor.org/info/rfc8174>.
+
    [RFC8198]  Fujiwara, K., Kato, A., and W. Kumari, "Aggressive Use of
               DNSSEC-Validated Cache", RFC 8198, DOI 10.17487/RFC8198,
               July 2017, <https://www.rfc-editor.org/info/rfc8198>.
 
-9.  Informative References
+   [RFC8767]  Lawrence, D., Kumari, W., and P. Sood, "Serving Stale Data
+              to Improve DNS Resiliency", RFC 8767,
+              DOI 10.17487/RFC8767, March 2020,
+              <https://www.rfc-editor.org/info/rfc8767>.
 
-
-
-Homburg                   Expires 15 April 2024                 [Page 4]
-
-Internet-Draft                    igadp                     October 2023
-
+12.2.  Informative References
 
    [RFC9077]  van Dijk, P., "NSEC and NSEC3: TTLs and Aggressive Use",
               RFC 9077, DOI 10.17487/RFC9077, July 2021,
               <https://www.rfc-editor.org/info/rfc9077>.
 
-Author's Address
+Authors' Addresses
 
    Philip Homburg
    Email: philip@nlnetlabs.nl
 
 
+   Stefan Ubbink
+   Stichting Internet Domeinregistratie Nederland
+   Postbus 5022
+   6802EA Arnhem
+   Netherlands
+   Email: stefan.ubbink@sidn.nl
 
 
 
@@ -256,25 +333,4 @@ Author's Address
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Homburg                   Expires 15 April 2024                 [Page 5]
+Homburg & Ubbink          Expires 15 July 2024                  [Page 6]

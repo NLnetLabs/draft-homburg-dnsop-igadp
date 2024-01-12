@@ -1,11 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- name="GENERATOR" content="github.com/mmarkdown/mmark Mmark Markdown Processor - mmark.miek.nl" -->
-<rfc version="3" ipr="trust200902" docName="draft-homburg-dnsop-igadp-00" submissionType="IETF" category="std" xml:lang="en" xmlns:xi="http://www.w3.org/2001/XInclude" indexInclude="true" consensus="true">
+<rfc version="3" ipr="trust200902" docName="draft-homburg-dnsop-igadp-01" submissionType="IETF" category="std" xml:lang="en" xmlns:xi="http://www.w3.org/2001/XInclude" indexInclude="true">
 
 <front>
-<title abbrev="igadp">Implementation Guidelines for Authoritative DNS Proxies</title><seriesInfo value="draft-homburg-dnsop-igadp-00" stream="IETF" status="standard" name="Internet-Draft"></seriesInfo>
+<title abbrev="igadp">Implementation Guidelines for Authoritative DNS Proxies</title><seriesInfo value="draft-homburg-dnsop-igadp-01" stream="IETF" status="standard" name="Internet-Draft"></seriesInfo>
 <author initials="P.C." surname="Homburg" fullname="Philip Homburg"><organization></organization><address><postal><street></street>
 </postal><email>philip@nlnetlabs.nl</email>
+</address></author><author initials="S.W.J." surname="Ubbink" fullname="Stefan Ubbink"><organization abbrev="SIDN">Stichting Internet Domeinregistratie Nederland</organization><address><postal><street>Postbus 5022</street>
+<city>Arnhem</city>
+<code>6802EA</code>
+<country>Netherlands</country>
+</postal><email>stefan.ubbink@sidn.nl</email>
 </address></author><date/>
 <area>Internet</area>
 <workgroup>DNSOP</workgroup>
@@ -54,6 +59,15 @@ for the domain. This is straight forward, but also provides limited benefits.</t
 <t>Another issue that may complicate caching of responses is the EDNS Client Subnet option.</t>
 </section>
 
+<section anchor="terminology"><name>Terminology and Definitions</name>
+<t>The key words &quot;<bcp14>MUST</bcp14>&quot;, &quot;<bcp14>MUST NOT</bcp14>&quot;, &quot;<bcp14>REQUIRED</bcp14>&quot;,
+&quot;<bcp14>SHALL</bcp14>&quot;, &quot;<bcp14>SHALL NOT</bcp14>&quot;, &quot;<bcp14>SHOULD</bcp14>&quot;, &quot;<bcp14>SHOULD NOT</bcp14>&quot;,
+&quot;<bcp14>RECOMMENDED</bcp14>&quot;, &quot;<bcp14>NOT RECOMMENDED</bcp14>&quot;, &quot;<bcp14>MAY</bcp14>&quot;, and
+&quot;<bcp14>OPTIONAL</bcp14>&quot; in this document are to be interpreted as described in
+BCP 14 <xref target="RFC2119"></xref><xref target="RFC8174"></xref> when, and only when, they appear in all
+capitals, as shown here.</t>
+</section>
+
 <section anchor="basic-requirements"><name>Basic Requirements</name>
 <t>The proxy sends requests upstream with RD bit clear.</t>
 <t>The proxy sends replies to clients with the original TTL. Caching is not
@@ -76,21 +90,47 @@ effect of immediately invalidating the cache.</t>
 hot cache items first.</t>
 <t>Note that DNS replies may contain SOA records.
 If a DNS replies contains a SOA record with a higher than the most recently seen serial number (taking into account Serial Number Arithmetic <xref target="RFC1982"></xref>), then the proxy updates its copy of the SOA records using one of the two techniques described above.</t>
+<t>Question: how effective will this setup be when fast updates are being used?</t>
 </section>
 
-<section anchor="aggressive-negative-caching"><name>Aggressive negative caching</name>
+<section anchor="aggressive-neg-cache"><name>Aggressive negative caching</name>
 <t>A caching proxy is allowed to generate negative responses (NODATA or NXDOMAIN)
 <xref target="RFC8198"></xref><xref target="RFC9077"></xref> based on information in NSEC or NSEC3 records.
 Obviously this can be done only for DNSSEC signed zones, and NXDOMAIN only for NSEC or NSEC3 without opt-out.</t>
 </section>
 
-<section anchor="ends-client-subnet-option"><name>ENDS Client Subnet Option</name>
-<t>A proxy MAY support <xref target="RFC7871"></xref> (Client Subnet in DNS Queries).</t>
-<t>If the proxy supports ECS, it SHOULD be disabled by default. The reason is that
+<section anchor="ecs-option"><name>ENDS Client Subnet (ECS) Option</name>
+<t>A proxy <bcp14>MAY</bcp14> support <xref target="RFC7871"></xref> (Client Subnet in DNS Queries).</t>
+<t>If the proxy supports ECS, it <bcp14>SHOULD</bcp14> be disabled by default. The reason is that
 ECS sends privacy sensitive data over the internet.</t>
-<t>A proxy that does not support ECS or where ECS support is disabled MUST not
+<t>A proxy that does not support ECS or where ECS support is disabled <bcp14>MUST</bcp14> not
 send queries upstream that contain the ECS option. In addition, the proxy
-MUST NOT send replies that contain an ECS option.</t>
+<bcp14>MUST NOT</bcp14> send replies that contain an ECS option.</t>
+</section>
+
+<section anchor="operational-considerations"><name>Operational Considerations</name>
+<t>When operating the proxy, there <bcp14>SHOULD</bcp14> be mechanisms in place to prevent a
+loop in getting authoritive answers. This can be achieved by using a seperate
+anycast network which will be the upstream for the proxy anycast network. Or
+it can be done with multiple unicast upstream systems.</t>
+<t>It is advised to prepare some blocking measures which can be activated without
+interruption of the service. These can be used when the service is under
+attack. An example of such measure is a rate limit.</t>
+<t>It is <bcp14>RECOMMENDED</bcp14> to enable serve stale data <xref target="RFC8767"></xref> on the proxies to be
+able to provide the service when the upstream disappeared.</t>
+</section>
+
+<section anchor="security"><name>Security and Privacy Considerations</name>
+<t>When a random-subdomain attack is done on the proxy, this will cause a lot of
+traffic to the other server that has the full zone(s) and will fill the cache
+with NXDOMAIN entries. <xref target="aggressive-neg-cache" format="title"></xref> will help a lot to
+reduce the traffic.
+If possible the proxy <bcp14>SHOULD</bcp14> only reply a maximum number of NXDOMAIN answers to a single resolver in a certain time to reduce the random-subdomain attack.
+As mentioned in <xref target="ecs-option"></xref> there could be privacy issues when ECS is enabled.</t>
+</section>
+
+<section anchor="iana"><name>IANA Considerations</name>
+<t>This document has no IANA actions</t>
 </section>
 
 <section anchor="acknowledgements"><name>Acknowledgements</name>
@@ -100,14 +140,19 @@ MUST NOT send replies that contain an ECS option.</t>
 </middle>
 
 <back>
+<references><name>References</name>
 <references><name>Normative References</name>
-<xi:include href="https://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.1982.xml"/>
-<xi:include href="https://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.7314.xml"/>
-<xi:include href="https://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.7871.xml"/>
-<xi:include href="https://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.8198.xml"/>
+<xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.1982.xml"/>
+<xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/>
+<xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.7314.xml"/>
+<xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.7871.xml"/>
+<xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"/>
+<xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8198.xml"/>
+<xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8767.xml"/>
 </references>
 <references><name>Informative References</name>
-<xi:include href="https://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.9077.xml"/>
+<xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9077.xml"/>
+</references>
 </references>
 
 </back>

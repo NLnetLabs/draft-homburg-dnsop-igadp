@@ -7,7 +7,7 @@ workgroup = "DNSOP"
 [seriesInfo]
 status = "standard"
 name = "Internet-Draft"
-value = "draft-homburg-dnsop-igadp-00"
+value = "draft-homburg-dnsop-igadp-01"
 stream = "IETF"
 
 date = 2023-10-13T00:00:00Z
@@ -19,6 +19,20 @@ fullname="Philip Homburg"
 organisation = "NLnet Labs"
   [author.address]
   email = "philip@nlnetlabs.nl"
+
+[[author]]
+initials = "S.W.J."
+surname = "Ubbink"
+fullname = "Stefan Ubbink"
+organization = "Stichting Internet Domeinregistratie Nederland"
+abbrev = "SIDN"
+[author.address]
+ email = "stefan.ubbink@sidn.nl"
+[author.address.postal]
+ street = "Postbus 5022"
+ city = "Arnhem"
+ code = "6802EA"
+ country = "Netherlands"
 %%%
 
 .# Abstract
@@ -68,6 +82,15 @@ Because we need the proxy to behave like an authoritative server and provide sim
 
 Another issue that may complicate caching of responses is the EDNS Client Subnet option.
 
+# Terminology and Definitions {#terminology}
+
+The key words "**MUST**", "**MUST NOT**", "**REQUIRED**",
+"**SHALL**", "**SHALL NOT**", "**SHOULD**", "**SHOULD NOT**",
+"**RECOMMENDED**", "**NOT RECOMMENDED**", "**MAY**", and
+"**OPTIONAL**" in this document are to be interpreted as described in
+BCP 14 [@!RFC2119;@!RFC8174] when, and only when, they appear in all
+capitals, as shown here.
+
 # Basic Requirements
 
 The proxy sends requests upstream with RD bit clear.
@@ -98,22 +121,53 @@ hot cache items first.
 Note that DNS replies may contain SOA records.
 If a DNS replies contains a SOA record with a higher than the most recently seen serial number (taking into account Serial Number Arithmetic [@!RFC1982]), then the proxy updates its copy of the SOA records using one of the two techniques described above.
 
-# Aggressive negative caching
+Question: how effective will this setup be when fast updates are being used?
+
+# Aggressive negative caching {#aggressive-neg-cache}
 
 A caching proxy is allowed to generate negative responses (NODATA or NXDOMAIN)
 [@!RFC8198;@RFC9077] based on information in NSEC or NSEC3 records.
 Obviously this can be done only for DNSSEC signed zones, and NXDOMAIN only for NSEC or NSEC3 without opt-out.
 
-# ENDS Client Subnet Option
+# ENDS Client Subnet (ECS) Option {#ecs-option}
 
-A proxy MAY support [@!RFC7871] (Client Subnet in DNS Queries).
+A proxy **MAY** support [@!RFC7871] (Client Subnet in DNS Queries).
 
-If the proxy supports ECS, it SHOULD be disabled by default. The reason is that
+If the proxy supports ECS, it **SHOULD** be disabled by default. The reason is that
 ECS sends privacy sensitive data over the internet.
 
-A proxy that does not support ECS or where ECS support is disabled MUST not
+A proxy that does not support ECS or where ECS support is disabled **MUST** not
 send queries upstream that contain the ECS option. In addition, the proxy
-MUST NOT send replies that contain an ECS option.
+**MUST NOT** send replies that contain an ECS option.
+
+# Operational Considerations
+
+When operating the proxy, there **SHOULD** be mechanisms in place to prevent a
+loop in getting authoritive answers. This can be achieved by using a seperate
+anycast network which will be the upstream for the proxy anycast network. Or
+it can be done with multiple unicast upstream systems.
+
+It is advised to prepare some blocking measures which can be activated without
+interruption of the service. These can be used when the service is under
+attack. An example of such measure is a rate limit.
+
+It is **RECOMMENDED** to enable serve stale data [@!RFC8767] on the proxies to be
+able to provide the service when the upstream disappeared.
+
+
+# Security and Privacy Considerations {#security}
+
+When a random-subdomain attack is done on the proxy, this will cause a lot of
+traffic to the other server that has the full zone(s) and will fill the cache
+with NXDOMAIN entries. (#aggressive-neg-cache, use title) will help a lot to
+reduce the traffic.
+If possible the proxy **SHOULD** only reply a maximum number of NXDOMAIN answers to a single resolver in a certain time to reduce the random-subdomain attack.
+As mentioned in (#ecs-option) there could be privacy issues when ECS is enabled.
+
+# IANA Considerations {#iana}
+
+This document has no IANA actions
+
 
 # Acknowledgements
 
